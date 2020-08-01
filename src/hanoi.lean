@@ -196,16 +196,17 @@ begin
   sorry
 end
 
-def game (t : towers) (disks : ℕ) (h : position t = [list.range' 1 disks, [], []]) : Prop := sorry
---∃ (t' : towers), 
-
---∃ (ts : list towers) (hts : ts ≠ []), (∀ (n : ℕ) (hn₁ : 0 < n) (hn₂ : n < ts.length), (∃ (s d : char), (move (ts.nth_le (n-1) (by linarith [hn₁, hn₂, lt_trans])) s d) = ts.nth_le n hn₂) ∧ (position (ts.last hts)) = [[], [], list.range' 1 disks])
+def game (t : towers) (disks : ℕ) (h : position t = [list.range' 1 disks, [], []]) : Prop :=
+∃ (ts : list towers),
+  ((∃ t' ∈ ts, position t' = [[], [], list.range' 1 disks]) ∧
+  (∃ t' ∈ ts, can_get_to t t') ∧
+  (∀ t' ∈ ts, can_get_to t t' ∨ position t' = [[], [], list.range' 1 disks] ∨ (∃ t'' ∈ ts, position t' ≠ position t'' ∧ can_get_to t'' t')))
 
 #check game
-#reduce [1, 2].nth_le 1 (by norm_num)
 
 example (t : towers) (h : position t = [[1], [], []]) : game t 1 h :=
 begin
+  --use [towers.mk [] [] [1], towers.mk [] [1] []],
   sorry
 end
 
