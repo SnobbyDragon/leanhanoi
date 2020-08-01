@@ -97,7 +97,9 @@ namespace hanoi''
 
 structure towers := (A : list ℕ) (B : list ℕ) (C : list ℕ)
 
-instance towers_has_repr : has_repr towers := sorry
+instance towers_has_repr : has_repr towers := ⟨λ t, t.A.repr ++ " " ++ t.B.repr ++ " " ++ t.C.repr⟩
+
+#eval towers.mk [1, 2] [] []
 
 #check towers
 #check towers.A
@@ -120,6 +122,8 @@ def move (t : towers) : char → char → towers
 | 'C' 'B' := moveCB t
 | _ _ := t -- invalid input or same tower
 
+def move' (t : towers) (s d : char) : towers := move t s d
+
 #check move
 
 private def valid_moveAB (t : towers) : Prop := t.A ≠ [] ∧ (t.B.head < t.A.head ∨ t.B = [])
@@ -136,6 +140,9 @@ def valid_move (t : towers) : char → char → Prop
 | 'C' 'A' := valid_moveCA t
 | 'B' 'C' := valid_moveBC t
 | 'C' 'B' := valid_moveCB t
+| 'A' 'A' := true
+| 'B' 'B' := true
+| 'C' 'C' := true
 | _ _ := false
 
 #check valid_move
@@ -174,10 +181,28 @@ begin
   exact hB,
 end
 
-def game (t : towers) (d : ℕ) (h : position t = [list.range' 1 d, [], []]) : Prop :=
-∃ (t' : towers), position t' = [[], [], list.range' 1 d]
+def can_get_to (t t' : towers) : Prop := ∃ (s d : char), position (move t s d) = position t' → valid_move t s d
+
+lemma can_get_to_self (t : towers) : can_get_to t t :=
+begin
+  use ['A', 'A'],
+  intros h,
+  unfold valid_move,
+end
+
+-- TODO neeeeed to redefine 'can_get_to' bc this isn't going to work
+lemma can_get_to_trans (t₁ t₂ t₃ : towers) (h₁ : can_get_to t₁ t₂) (h₂ : can_get_to t₂ t₃) : can_get_to t₁ t₃ :=
+begin
+  sorry
+end
+
+def game (t : towers) (disks : ℕ) (h : position t = [list.range' 1 disks, [], []]) : Prop := sorry
+--∃ (t' : towers), 
+
+--∃ (ts : list towers) (hts : ts ≠ []), (∀ (n : ℕ) (hn₁ : 0 < n) (hn₂ : n < ts.length), (∃ (s d : char), (move (ts.nth_le (n-1) (by linarith [hn₁, hn₂, lt_trans])) s d) = ts.nth_le n hn₂) ∧ (position (ts.last hts)) = [[], [], list.range' 1 disks])
 
 #check game
+#reduce [1, 2].nth_le 1 (by norm_num)
 
 example (t : towers) (h : position t = [[1], [], []]) : game t 1 h :=
 begin
