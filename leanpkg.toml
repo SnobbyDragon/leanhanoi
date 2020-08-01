@@ -1,0 +1,8 @@
+[package]
+name = "hanoi"
+version = "0.1"
+lean_version = "leanprover-community/lean:3.17.1"
+path = "src"
+
+[dependencies]
+mathlib = {git = "https://github.com/leanprover-community/mathlib", rev = "229cf6ef21126e17e6ec78b4acc5413ad0a8a02d"}
