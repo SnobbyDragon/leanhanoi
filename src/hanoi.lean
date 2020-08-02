@@ -1,99 +1,8 @@
 import data.list
 import tactic
 
--- THIS ISNT WORKING
-namespace hanoi
-
-inductive towers
-| A  : list ℕ → towers
-| B  : list ℕ → towers
-| C  : list ℕ → towers
-
-#check towers.A
-#check towers.B
-#check towers.C
-
-open towers
-
-#check A
-#check B
-#check C
-
--- gives the positions of the disks
-def position (t : towers) : list ℕ := towers.cases_on t (λ a, a) (λ b, b) (λ c, c)
-
-#check position
-#reduce position (A $ list.range' 1 5)
-#reduce position (B [])
-#reduce position (C [])
-
---instance tower_has_repr : has_repr towers := sorry
-
-def valid_move (s d : towers) : Prop :=
-position s ≠ [] ∧ ((position s).head < (position d).head ∨ position d = [])
-
-#check valid_move
-#reduce valid_move (A $ list.range' 1 5) (B [])
-
-def move (s d : towers) : Prop := ∃ (s' d' : towers), position d' = (position s).head :: position d ∧ position s' = (position s).drop 1
-
-#check move
-#reduce move (A $ list.range' 1 5) (B [])
-
--- can get from start to destination
-def can_get_to (s d : towers) : Prop :=
-∃ (t : towers), (move s t → position s = position d) ∨ (move t s → position s = position d)
-
-lemma can_get_to_self (s : towers) : can_get_to s s :=
-begin
-  use s,
-  left,
-  intros h,
-  refl,
-end
-
-lemma can_get_to_trans (s d₁ d₂ : towers) : can_get_to s d₁ ∧ can_get_to d₁ d₂ → can_get_to s d₂ :=
-begin
-  intros h,
-  rcases h with ⟨hl, t, hr⟩,
-  sorry
-end
-
---def is_solvable (t : towers) : t := sorry
-
-end hanoi
-
--- THIS ISNT WORKING EITHER
-namespace hanoi'
-
-structure towers :=
-(pos : fin 3 → list ℕ)
-(tower : ∀ i : fin 3, ∀ (n : ℕ) (h : n+1 < (pos i).length ∧ n < (pos i).length), ((pos i).nth_le n h.2 ) < ((pos i).nth_le (n+1) h.1))
---(pos i) < list.drop 1 (pos i) ++ (pos i).tail )
-
-instance : has_repr towers := sorry
-
-def valid_move (t : towers) (s d : fin 3) : Prop :=
-(t.pos s ≠ [] ∧ ((t.pos s).head < (t.pos d).head ∨ t.pos d = []))
-
---def move (t : towers) (s d ∈ fin 3) (h : valid_move t s d): towers := towers.mk
-
---t.pos d = (t.pos s).head :: t.pos d ∧ t.pos s = (t.pos s).drop 1
-
-def start (t : towers) (d : ℕ) := t.pos 1 = list.range' 1 d ∧ t.pos 2 = [] ∧ t.pos 3 = []
-
-def goal (t : towers) (d : ℕ) := t.pos 1 = [] ∧ t.pos 2 = [] ∧ t.pos 3 = list.range' 1 d
-
-example (t : towers) : start t 3 → t.pos 1 = list.range' 2 3 ∧ t.pos 2 = [] ∧ t.pos 3 = [1] :=
-begin
-  sorry
-end
-
-end hanoi'
-
-
 -- THIRD TIME'S THE CHARM??
-namespace hanoi''
+namespace hanoi
 
 structure towers := (A : list ℕ) (B : list ℕ) (C : list ℕ)
 
@@ -108,12 +17,12 @@ instance towers_has_repr : has_repr towers := ⟨λ t, "A: " ++ t.A.repr ++ " B:
 def position (t : towers) : list (list ℕ) := [t.A, t.B, t.C]
 
 def move (t : towers) : char → char → towers
-| 'A' 'B' := towers.mk (t.A.drop 1) (t.A.head :: t.B) t.C
-| 'A' 'C' := towers.mk (t.A.drop 1) t.B (t.A.head :: t.C)
-| 'B' 'A' := towers.mk (t.B.head :: t.A) (t.B.drop 1) t.C
-| 'C' 'A' := towers.mk (t.C.head :: t.A) t.B (t.C.drop 1)
-| 'B' 'C' := towers.mk t.A (t.B.drop 1) (t.B.head :: t.C)
-| 'C' 'B' := towers.mk t.A (t.C.head :: t.B) (t.C.drop 1)
+| 'A' 'B' := towers.mk (t.A.tail) (t.A.head :: t.B) t.C
+| 'A' 'C' := towers.mk (t.A.tail) t.B (t.A.head :: t.C)
+| 'B' 'A' := towers.mk (t.B.head :: t.A) (t.B.tail) t.C
+| 'C' 'A' := towers.mk (t.C.head :: t.A) t.B (t.C.tail)
+| 'B' 'C' := towers.mk t.A (t.B.tail) (t.B.head :: t.C)
+| 'C' 'B' := towers.mk t.A (t.C.head :: t.B) (t.C.tail)
 | _ _ := t -- invalid input or same tower
 
 #check move
@@ -156,9 +65,12 @@ begin
 end
 
 def can_get_to_one (t t' : towers) : Prop := ∃ (s d : char), move t s d = t' → valid_move t s d
+def can_get_to_gt_one (t t' : towers) : Prop := ∃ (tows : list towers), (∃ first ∈ tows, ∃ last ∈ tows, can_get_to_one t first ∧ can_get_to_one last t' ∧ (∀ tow ∈ tows, tow ≠ last → (∃ tow' ∈ tows, tow ≠ tow' ∧ can_get_to_one tow tow')))
 
 -- TODO: this is extreeeemely overly complicated :(
-def can_get_to (t t' : towers) : Prop := can_get_to_one t t' ∨ ∃ (tows : list towers), ((∃ tow ∈ tows, can_get_to_one t tow) ∧ ∀ tow ∈ tows, (∃ tow' ∈ tows, tow ≠ tow' ∧ can_get_to_one tow tow') ∨ can_get_to_one tow t')
+def can_get_to (t t' : towers) : Prop := can_get_to_one t t' ∨ can_get_to_gt_one t t'
+
+#check can_get_to
 
 lemma can_get_to_self (t : towers) : can_get_to t t :=
 begin
@@ -169,37 +81,114 @@ begin
   --unfold valid_move,
 end
 
+example (a b c : list ℕ) : (towers.mk a b c).A = a :=
+begin
+  refl,
+end
+
+-- TODO this is a mess
+lemma valid_move_sym (t : towers) (s d : char) : valid_move t s d → valid_move (move t s d) d s :=
+begin
+  sorry
+end
+
+-- TODO this is a mess
+lemma move_sym (t : towers) (s d : char) : make_move t s d → t = move (move t s d) d s :=
+begin
+  intros m,
+  by_cases (s = 'A' ∨ s = 'B' ∨ s = 'C') ∧ (d = 'A' ∨ d = 'B' ∨ d = 'C'),
+  { cases h with hs hd,
+    cases hs with hsA,
+    cases hd with hdA,
+    { -- move from A to A
+      rw [hsA, hdA],
+      refl,
+    },
+    { cases hd with hdB hdC,
+      { -- move from A to B
+        rw [hsA, hdB],
+        sorry
+      },
+      { sorry },
+    },
+    sorry },
+  { sorry }
+end
+
+lemma can_get_to_one_sym (t t' : towers) : can_get_to_one t t' → can_get_to_one t' t :=
+begin
+  intros h,
+  rcases h with ⟨s, d, h⟩,
+  use [d, s],
+  intros m,
+  sorry
+end
+
+lemma can_get_to_one_can_get_to (t t' : towers) : can_get_to_one t t' → can_get_to t t' :=
+begin
+  intros h,
+  left,
+  exact h,
+end
+
+lemma can_get_to_one_twice (t₁ t₂ t₃ : towers) (h₁ : can_get_to_one t₁ t₂) (h₂ : can_get_to_one t₂ t₃) : can_get_to t₁ t₃ :=
+begin
+  right,
+  use [[t₂], t₂, t₂], -- one middle tower, thus same point of entry/exit
+  split,
+  { exact list.mem_singleton_self _ },
+  { split,
+    { exact h₁ },
+    { split,
+      { exact h₂ },
+      { intros tow htow_in htow_ne_last,
+        exfalso,
+        apply htow_ne_last,
+        rwa list.mem_singleton at htow_in } } }
+end
+
+lemma can_get_to_gt_one_iff_can_get_to_ne_one (t t' : towers) :
+can_get_to t t' ∧ ¬can_get_to_one t t' ↔ can_get_to_gt_one t t' :=
+begin
+  split,
+  { intros h,
+    cases h with h₁ h₂,
+    sorry
+  },
+  { sorry }
+end
+
+lemma can_get_to_one_gt_one (t₁ t₂ t₃ : towers) (h₁ : can_get_to_one t₁ t₂) (h₂ : can_get_to_gt_one t₂ t₃) : can_get_to t₁ t₃ :=
+begin
+  sorry
+end
+
 -- TODO complicated definitions are leading to misery but ill try it anyways
 lemma can_get_to_trans (t₁ t₂ t₃ : towers) (h₁ : can_get_to t₁ t₂) (h₂ : can_get_to t₂ t₃) : can_get_to t₁ t₃ :=
 begin
-  right,
   cases h₁,
   { cases h₂,
     { -- can get to each other in one move
-      use t₂ :: list.nil, -- i dont know how to make a list...
+      exact can_get_to_one_twice t₁ t₂ t₃ h₁ h₂ },
+    { -- can get from t₁ to t₂ in one move, but multiple moves from t₂ to t₃
+      rcases h₂ with ⟨tows, first, hfirst_in, last, hlast_in, hstart_cgt, hlast_cgt, hmid⟩,
+      right,
+      use [t₂ :: tows, t₂, list.mem_cons_self _ _, last, list.mem_cons_of_mem t₂ hlast_in],
       split,
-      { use t₂,
-        split,
-        exact list.mem_singleton_self _,
-        exact h₁ },
-      { intros tow h,
-        rw list.mem_singleton at h,
-        right,
-        rw h,
-        exact h₂,
+      { exact h₁ },
+      { split,
+        { exact hlast_cgt },
+        { sorry },
       },
     },
-    { -- can get from t₁ to t₂ in one move, but multiple moves from t₂ to t₃
-      -- TODO: PLEASE RENAME ALL THESE TOWERS THERES WAY TOO MANY!!!!
-      rcases h₂ with ⟨tows, h₂, h₂'⟩,
-      rcases h₂ with ⟨tow, htow, tow'⟩,
-      specialize h₂' tow htow,
-      rcases h₂' with ⟨tow'', h₂', htow'⟩,
-      { sorry },
-      { sorry } } },
+  },
   { cases h₂,
-    { sorry },
-    { sorry } }
+    { -- multiple moves to get from t₁ to t₂ but one move from t₂ to t₃
+      sorry
+    },
+    { -- multiple moves from each other
+      sorry
+    } }
 end
 
 def game (t : towers) (disks : ℕ) (h : t = towers.mk (list.range' 1 disks) [] []) : Prop :=
@@ -212,4 +201,4 @@ begin
   sorry
 end
 
-end hanoi''
+end hanoi
