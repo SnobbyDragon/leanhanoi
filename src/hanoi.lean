@@ -16,6 +16,14 @@ instance towers_has_repr : has_repr towers := ⟨λ t, "A: " ++ t.A.repr ++ " B:
 -- this is pretty useless lmao
 def position (t : towers) : list (list ℕ) := [t.A, t.B, t.C]
 
+-- TODO
+-- valid towers only have lists that are strictly increasing
+-- valid towers have no duplicate disks
+def valid_tower (t : towers) : Prop := sorry
+
+-- number of disks on the towers
+def disks (t : towers) : ℕ := t.A.length + t.B.length + t.C.length
+
 def move (t : towers) : char → char → towers
 | 'A' 'B' := towers.mk (t.A.tail) (t.A.head :: t.B) t.C
 | 'A' 'C' := towers.mk (t.A.tail) t.B (t.A.head :: t.C)
@@ -41,6 +49,7 @@ def valid_move (t : towers) : char → char → Prop
 
 #check valid_move
 
+-- TODO not sure how to use this. needs to be reworked later
 def make_move (t : towers) (s d : char) : Prop := (∃ (t' : towers), t' = move t s d) → (valid_move t s d)
 
 #check make_move
@@ -65,31 +74,79 @@ begin
 end
 
 def can_get_to_one (t t' : towers) : Prop := ∃ (s d : char), move t s d = t' → valid_move t s d
+
+-- lol is there a way to simplify this?
+-- answer: use the inductive definition lmao
 def can_get_to_gt_one (t t' : towers) : Prop := ∃ (tows : list towers), (∃ first ∈ tows, ∃ last ∈ tows, can_get_to_one t first ∧ can_get_to_one last t' ∧ (∀ tow ∈ tows, tow ≠ last → (∃ tow' ∈ tows, tow ≠ tow' ∧ can_get_to_one tow tow')))
 
--- TODO: this is extreeeemely overly complicated :(
 def can_get_to (t t' : towers) : Prop := can_get_to_one t t' ∨ can_get_to_gt_one t t'
 
 #check can_get_to
 
-lemma can_get_to_self (t : towers) : can_get_to t t :=
+-- alternative inductive definition (suggested by Kevin Buzzard! thanks again!)
+inductive can_get_to' : towers → towers → Prop
+| can_get_to_self' : ∀ (t : towers), can_get_to' t t
+| can_get_to_one' : ∀ (t t' : towers), can_get_to_one t t' → can_get_to' t t'
+| can_get_to_trans' : ∀ (t₁ t₂ t₃ : towers), can_get_to' t₁ t₂ → can_get_to' t₂ t₃ → can_get_to' t₁ t₃
+
+#check can_get_to'
+
+open can_get_to'
+
+example (t t' : towers) : can_get_to_one t t' → can_get_to' t t':=
 begin
-  left,
+  apply can_get_to_one',
+end
+
+lemma can_get_to_trans'' (t₁ t₂ t₃ : towers) : can_get_to' t₁ t₂ ∧ can_get_to' t₂ t₃ → can_get_to' t₁ t₃ :=
+begin
+  rintros ⟨h₁, h₂⟩,
+  apply can_get_to_trans' t₁ t₂ t₃,
+  exact h₁,
+  exact h₂,
+end
+
+lemma can_get_to_one_self (t : towers) : can_get_to_one t t :=
+begin
   use ['A', 'A'],
   intros h,
   exact trivial,
-  --unfold valid_move,
 end
 
-example (a b c : list ℕ) : (towers.mk a b c).A = a :=
+-- you can always meander and use more moves
+lemma can_get_to_one_can_get_to_gt_one (t t' : towers) (h : can_get_to_one t t') : can_get_to_gt_one t t' :=
 begin
-  refl,
+  use [[t], t, t],
+  split,
+  { exact list.mem_singleton_self _ },
+  { split,
+    { exact can_get_to_one_self t },
+    { split,
+      { exact h },
+      { intros tow htow_in htow_ne_t,
+        rw list.mem_singleton at htow_in,
+        contradiction } } }
+end
+
+lemma can_get_to_gt_one_self (t : towers) : can_get_to_gt_one t t :=
+begin
+  apply can_get_to_one_can_get_to_gt_one,
+  exact can_get_to_one_self t,
+end
+
+lemma can_get_to_self (t : towers) : can_get_to t t :=
+begin
+  left,
+  exact can_get_to_one_self t,
 end
 
 -- TODO this is a mess
 lemma valid_move_sym (t : towers) (s d : char) : valid_move t s d → valid_move (move t s d) d s :=
 begin
-  sorry
+  intros h,
+  by_cases h' : (s = 'A' ∨ s = 'B' ∨ s = 'C') ∧ (d = 'A' ∨ d = 'B' ∨ d = 'C'),
+  { sorry },
+  { sorry }
 end
 
 -- TODO this is a mess
@@ -131,6 +188,7 @@ begin
   exact h,
 end
 
+-- if t₁ can get to t₂ in one move, and t₂ can get to t₃ in one move, then t₁ can get to t₃
 lemma can_get_to_one_twice (t₁ t₂ t₃ : towers) (h₁ : can_get_to_one t₁ t₂) (h₂ : can_get_to_one t₂ t₃) : can_get_to t₁ t₃ :=
 begin
   right,
@@ -147,23 +205,26 @@ begin
         rwa list.mem_singleton at htow_in } } }
 end
 
-lemma can_get_to_gt_one_iff_can_get_to_ne_one (t t' : towers) :
-can_get_to t t' ∧ ¬can_get_to_one t t' ↔ can_get_to_gt_one t t' :=
-begin
-  split,
-  { intros h,
-    cases h with h₁ h₂,
-    sorry
-  },
-  { sorry }
-end
-
+-- if t₁ can get to t₂ in one move, and t₂ can get to t₃ in multiple moves, then t₁ can get to t₃
 lemma can_get_to_one_gt_one (t₁ t₂ t₃ : towers) (h₁ : can_get_to_one t₁ t₂) (h₂ : can_get_to_gt_one t₂ t₃) : can_get_to t₁ t₃ :=
 begin
-  sorry
+  rcases h₂ with ⟨tows, first, hfirst_in, last, hlast_in, hstart_cgt, hlast_cgt, hmid⟩,
+  right,
+  use [t₂ :: tows, t₂, list.mem_cons_self _ _, last, list.mem_cons_of_mem t₂ hlast_in],
+  split,
+  { exact h₁ },
+  { split,
+    { exact hlast_cgt },
+    { intros tow htow_in htow_ne_last,
+      cases htow_in,
+      { sorry },
+      { sorry }
+    }
+  }
 end
 
 -- TODO complicated definitions are leading to misery but ill try it anyways
+-- if t₁ can get to t₂, and t₂ can get to t₃, then t₁ can get to t₃
 lemma can_get_to_trans (t₁ t₂ t₃ : towers) (h₁ : can_get_to t₁ t₂) (h₂ : can_get_to t₂ t₃) : can_get_to t₁ t₃ :=
 begin
   cases h₁,
@@ -191,13 +252,41 @@ begin
     } }
 end
 
-def game (t : towers) (disks : ℕ) (h : t = towers.mk (list.range' 1 disks) [] []) : Prop :=
-can_get_to t (towers.mk [] [] (list.range' 1 disks))
+def game (disks : ℕ) : Prop :=
+can_get_to (towers.mk (list.range' 1 disks) [] []) (towers.mk [] [] (list.range' 1 disks))
+
+-- using the inductive definition
+def game' (disks : ℕ) : Prop :=
+can_get_to' (towers.mk (list.range' 1 disks) [] []) (towers.mk [] [] (list.range' 1 disks))
 
 #check game
+#check game'
 
-example (t : towers) (h : t = towers.mk [1] [] []) : game t 1 h :=
+-- using non-inductive definition
+example : game 1 :=
 begin
+  left,
+  use ['A', 'C'],
+  intros h',
+  exact trivial,
+  --unfold valid_move,
+end
+
+-- using inductive definition
+example : game' 1 :=
+begin
+  apply can_get_to_one',
+  use ['A', 'C'],
+  intros h',
+  exact trivial,
+  --unfold valid_move,
+end
+
+-- any puzzle can be solved!!
+-- when we prove this, we win forever ;)
+theorem ultimate : ∀ (disks : ℕ), game disks :=
+begin
+  intros disks,
   sorry
 end
 
