@@ -97,53 +97,38 @@ namespace hanoi''
 
 structure towers := (A : list ℕ) (B : list ℕ) (C : list ℕ)
 
-instance towers_has_repr : has_repr towers := ⟨λ t, t.A.repr ++ " " ++ t.B.repr ++ " " ++ t.C.repr⟩
+instance towers_has_repr : has_repr towers := ⟨λ t, "A: " ++ t.A.repr ++ " B: " ++ t.B.repr ++ " C: " ++ t.C.repr⟩
 
 #eval towers.mk [1, 2] [] []
 
 #check towers
 #check towers.A
 
+-- this is pretty useless lmao
 def position (t : towers) : list (list ℕ) := [t.A, t.B, t.C]
 
-private def moveAB (t : towers) : towers := towers.mk (t.A.drop 1) (t.A.head :: t.B) t.C
-private def moveAC (t : towers) : towers := towers.mk (t.A.drop 1) t.B (t.A.head :: t.C)
-private def moveBA (t : towers) : towers := towers.mk (t.B.head :: t.A) (t.B.drop 1) t.C
-private def moveCA (t : towers) : towers := towers.mk (t.C.head :: t.A) t.B (t.C.drop 1)
-private def moveBC (t : towers) : towers := towers.mk t.A (t.B.drop 1) (t.B.head :: t.C)
-private def moveCB (t : towers) : towers := towers.mk t.A (t.C.head :: t.B) (t.C.drop 1)
-
 def move (t : towers) : char → char → towers
-| 'A' 'B' := moveAB t
-| 'A' 'C' := moveAC t
-| 'B' 'A' := moveBA t
-| 'C' 'A' := moveCA t
-| 'B' 'C' := moveBC t
-| 'C' 'B' := moveCB t
+| 'A' 'B' := towers.mk (t.A.drop 1) (t.A.head :: t.B) t.C
+| 'A' 'C' := towers.mk (t.A.drop 1) t.B (t.A.head :: t.C)
+| 'B' 'A' := towers.mk (t.B.head :: t.A) (t.B.drop 1) t.C
+| 'C' 'A' := towers.mk (t.C.head :: t.A) t.B (t.C.drop 1)
+| 'B' 'C' := towers.mk t.A (t.B.drop 1) (t.B.head :: t.C)
+| 'C' 'B' := towers.mk t.A (t.C.head :: t.B) (t.C.drop 1)
 | _ _ := t -- invalid input or same tower
-
-def move' (t : towers) (s d : char) : towers := move t s d
 
 #check move
 
-private def valid_moveAB (t : towers) : Prop := t.A ≠ [] ∧ (t.B.head < t.A.head ∨ t.B = [])
-private def valid_moveAC (t : towers) : Prop := t.A ≠ [] ∧ (t.C.head < t.A.head ∨ t.C = [])
-private def valid_moveBA (t : towers) : Prop := t.B ≠ [] ∧ (t.B.head < t.A.head ∨ t.A = [])
-private def valid_moveCA (t : towers) : Prop := t.C ≠ [] ∧ (t.C.head < t.A.head ∨ t.A = [])
-private def valid_moveBC (t : towers) : Prop := t.B ≠ [] ∧ (t.B.head < t.C.head ∨ t.C = [])
-private def valid_moveCB (t : towers) : Prop := t.C ≠ [] ∧ (t.C.head < t.B.head ∨ t.B = [])
-
 def valid_move (t : towers) : char → char → Prop
-| 'A' 'B' := valid_moveAB t
-| 'A' 'C' := valid_moveAC t
-| 'B' 'A' := valid_moveBA t
-| 'C' 'A' := valid_moveCA t
-| 'B' 'C' := valid_moveBC t
-| 'C' 'B' := valid_moveCB t
+| 'A' 'B' := if t.A ≠ [] ∧ (t.B.head < t.A.head ∨ t.B = []) then true else false
+| 'A' 'C' := if t.A ≠ [] ∧ (t.C.head < t.A.head ∨ t.C = []) then true else false
+| 'B' 'A' := if t.B ≠ [] ∧ (t.B.head < t.A.head ∨ t.A = []) then true else false
+| 'C' 'A' := if t.C ≠ [] ∧ (t.C.head < t.A.head ∨ t.A = []) then true else false
+| 'B' 'C' := if t.B ≠ [] ∧ (t.B.head < t.C.head ∨ t.C = []) then true else false
+| 'C' 'B' := if t.C ≠ [] ∧ (t.C.head < t.B.head ∨ t.B = []) then true else false
 | 'A' 'A' := true
 | 'B' 'B' := true
 | 'C' 'C' := true
-| _ _ := false
+| _ _ := false -- invalid input
 
 #check valid_move
 
@@ -152,61 +137,78 @@ def make_move (t : towers) (s d : char) : Prop := (∃ (t' : towers), t' = move 
 #check make_move
 
 -- these definitions either suck or I don't know how to use them, or both
--- we don't want to unfold so much
-example (t : towers) (h : position t = [[1,2,3],[],[]]) : position (move t 'A' 'B') = [[2,3],[1],[]] :=
+-- we don't want to unfold so much...
+-- also rw is huuuuge when we rw h. does not look nice!
+example (t : towers) (h : t = towers.mk [1,2,3] [] []) : move t 'A' 'B' = towers.mk [2,3] [1] [] :=
 begin
   unfold move,
-  unfold moveAB,
-  unfold position at h,
-  simp at h,
-  rcases h with ⟨hA, hB, hC⟩,
-  rw [hA, hB, hC],
+  rw h,
   simp,
-  unfold position,
 end
 
-example (t : towers) (h : position t = [[1,2,3],[],[]]) : make_move t 'A' 'B' :=
+example (t : towers) (h : t = towers.mk [1,2,3] [] []) : make_move t 'A' 'B' :=
 begin
   intros h,
   cases h with t' ht',
   unfold valid_move,
-  unfold valid_moveAB,
-  unfold position at h,
-  simp at h,
-  rcases h with ⟨hA, hB, hC⟩,
-  split,
-  rw hA,
+  rw h,
   simp,
-  right,
-  exact hB,
 end
 
-def can_get_to (t t' : towers) : Prop := ∃ (s d : char), position (move t s d) = position t' → valid_move t s d
+def can_get_to_one (t t' : towers) : Prop := ∃ (s d : char), move t s d = t' → valid_move t s d
+
+-- TODO: this is extreeeemely overly complicated :(
+def can_get_to (t t' : towers) : Prop := can_get_to_one t t' ∨ ∃ (tows : list towers), ((∃ tow ∈ tows, can_get_to_one t tow) ∧ ∀ tow ∈ tows, (∃ tow' ∈ tows, tow ≠ tow' ∧ can_get_to_one tow tow') ∨ can_get_to_one tow t')
 
 lemma can_get_to_self (t : towers) : can_get_to t t :=
 begin
+  left,
   use ['A', 'A'],
   intros h,
-  unfold valid_move,
+  exact trivial,
+  --unfold valid_move,
 end
 
--- TODO neeeeed to redefine 'can_get_to' bc this isn't going to work
+-- TODO complicated definitions are leading to misery but ill try it anyways
 lemma can_get_to_trans (t₁ t₂ t₃ : towers) (h₁ : can_get_to t₁ t₂) (h₂ : can_get_to t₂ t₃) : can_get_to t₁ t₃ :=
 begin
-  sorry
+  right,
+  cases h₁,
+  { cases h₂,
+    { -- can get to each other in one move
+      use t₂ :: list.nil, -- i dont know how to make a list...
+      split,
+      { use t₂,
+        split,
+        exact list.mem_singleton_self _,
+        exact h₁ },
+      { intros tow h,
+        rw list.mem_singleton at h,
+        right,
+        rw h,
+        exact h₂,
+      },
+    },
+    { -- can get from t₁ to t₂ in one move, but multiple moves from t₂ to t₃
+      -- TODO: PLEASE RENAME ALL THESE TOWERS THERES WAY TOO MANY!!!!
+      rcases h₂ with ⟨tows, h₂, h₂'⟩,
+      rcases h₂ with ⟨tow, htow, tow'⟩,
+      specialize h₂' tow htow,
+      rcases h₂' with ⟨tow'', h₂', htow'⟩,
+      { sorry },
+      { sorry } } },
+  { cases h₂,
+    { sorry },
+    { sorry } }
 end
 
-def game (t : towers) (disks : ℕ) (h : position t = [list.range' 1 disks, [], []]) : Prop :=
-∃ (ts : list towers),
-  ((∃ t' ∈ ts, position t' = [[], [], list.range' 1 disks]) ∧
-  (∃ t' ∈ ts, can_get_to t t') ∧
-  (∀ t' ∈ ts, can_get_to t t' ∨ position t' = [[], [], list.range' 1 disks] ∨ (∃ t'' ∈ ts, position t' ≠ position t'' ∧ can_get_to t'' t')))
+def game (t : towers) (disks : ℕ) (h : t = towers.mk (list.range' 1 disks) [] []) : Prop :=
+can_get_to t (towers.mk [] [] (list.range' 1 disks))
 
 #check game
 
-example (t : towers) (h : position t = [[1], [], []]) : game t 1 h :=
+example (t : towers) (h : t = towers.mk [1] [] []) : game t 1 h :=
 begin
-  --use [towers.mk [] [] [1], towers.mk [] [1] []],
   sorry
 end
 
