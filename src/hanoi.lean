@@ -16,7 +16,8 @@ instance towers_has_repr : has_repr towers := ⟨λ t, "A: " ++ t.A.repr ++ " B:
 -- this is pretty useless lmao
 def position (t : towers) : list (list ℕ) := [t.A, t.B, t.C]
 
--- TODO
+-- TODO: not sure when this will be used.
+-- is it true any valid tower can get to another valid tower w/equal number of disks?
 -- valid towers only have lists that are strictly increasing
 -- valid towers have no duplicate disks
 def valid_tower (t : towers) : Prop := sorry
@@ -24,47 +25,59 @@ def valid_tower (t : towers) : Prop := sorry
 -- number of disks on the towers
 def disks (t : towers) : ℕ := t.A.length + t.B.length + t.C.length
 
-def move (t : towers) : char → char → towers
-| 'A' 'B' := towers.mk (t.A.tail) (t.A.head :: t.B) t.C
-| 'A' 'C' := towers.mk (t.A.tail) t.B (t.A.head :: t.C)
-| 'B' 'A' := towers.mk (t.B.head :: t.A) (t.B.tail) t.C
-| 'C' 'A' := towers.mk (t.C.head :: t.A) t.B (t.C.tail)
-| 'B' 'C' := towers.mk t.A (t.B.tail) (t.B.head :: t.C)
-| 'C' 'B' := towers.mk t.A (t.C.head :: t.B) (t.C.tail)
-| _ _ := t -- invalid input or same tower
+inductive tower : Type
+| a | b | c
+
+open tower
+
+def move (t : towers) : tower → tower → towers
+| a b := towers.mk (t.A.tail) (t.A.head :: t.B) t.C
+| a c := towers.mk (t.A.tail) t.B (t.A.head :: t.C)
+| b a := towers.mk (t.B.head :: t.A) (t.B.tail) t.C
+| c a := towers.mk (t.C.head :: t.A) t.B (t.C.tail)
+| b c := towers.mk t.A (t.B.tail) (t.B.head :: t.C)
+| c b := towers.mk t.A (t.C.head :: t.B) (t.C.tail)
+| a a := t
+| b b := t
+| c c := t
+
+@[simp]
+lemma move_self (t : towers) (s : tower) : move t s s = t :=
+begin
+  cases s; refl, -- why does rfl not work??
+end
 
 #check move
 
-def valid_move (t : towers) : char → char → Prop
-| 'A' 'B' := if t.A ≠ [] ∧ (t.B.head < t.A.head ∨ t.B = []) then true else false
-| 'A' 'C' := if t.A ≠ [] ∧ (t.C.head < t.A.head ∨ t.C = []) then true else false
-| 'B' 'A' := if t.B ≠ [] ∧ (t.B.head < t.A.head ∨ t.A = []) then true else false
-| 'C' 'A' := if t.C ≠ [] ∧ (t.C.head < t.A.head ∨ t.A = []) then true else false
-| 'B' 'C' := if t.B ≠ [] ∧ (t.B.head < t.C.head ∨ t.C = []) then true else false
-| 'C' 'B' := if t.C ≠ [] ∧ (t.C.head < t.B.head ∨ t.B = []) then true else false
-| 'A' 'A' := true
-| 'B' 'B' := true
-| 'C' 'C' := true
-| _ _ := false -- invalid input
+def valid_move (t : towers) : tower → tower → Prop
+| a b := if t.A ≠ [] ∧ (t.B.head < t.A.head ∨ t.B = []) then true else false
+| a c := if t.A ≠ [] ∧ (t.C.head < t.A.head ∨ t.C = []) then true else false
+| b a := if t.B ≠ [] ∧ (t.B.head < t.A.head ∨ t.A = []) then true else false
+| c a := if t.C ≠ [] ∧ (t.C.head < t.A.head ∨ t.A = []) then true else false
+| b c := if t.B ≠ [] ∧ (t.B.head < t.C.head ∨ t.C = []) then true else false
+| c b := if t.C ≠ [] ∧ (t.C.head < t.B.head ∨ t.B = []) then true else false
+| a a := true
+| b b := true
+| c c := true
 
 #check valid_move
 
 -- TODO not sure how to use this. needs to be reworked later
-def make_move (t : towers) (s d : char) : Prop := (∃ (t' : towers), t' = move t s d) → (valid_move t s d)
+def make_move (t : towers) (s d : tower) : Prop := (∃ (t' : towers), t' = move t s d) → (valid_move t s d)
 
 #check make_move
 
 -- these definitions either suck or I don't know how to use them, or both
 -- we don't want to unfold so much...
 -- also rw is huuuuge when we rw h. does not look nice!
-example (t : towers) (h : t = towers.mk [1,2,3] [] []) : move t 'A' 'B' = towers.mk [2,3] [1] [] :=
+example (t : towers) (h : t = towers.mk [1,2,3] [] []) : move t a b = towers.mk [2,3] [1] [] :=
 begin
   unfold move,
   rw h,
   simp,
 end
 
-example (t : towers) (h : t = towers.mk [1,2,3] [] []) : make_move t 'A' 'B' :=
+example (t : towers) (h : t = towers.mk [1,2,3] [] []) : make_move t a b :=
 begin
   intros h,
   cases h with t' ht',
@@ -73,7 +86,7 @@ begin
   simp,
 end
 
-def can_get_to_one (t t' : towers) : Prop := ∃ (s d : char), move t s d = t' → valid_move t s d
+def can_get_to_one (t t' : towers) : Prop := ∃ (s d : tower), move t s d = t' → valid_move t s d
 
 -- lol is there a way to simplify this?
 -- answer: use the inductive definition lmao
@@ -108,7 +121,7 @@ end
 
 lemma can_get_to_one_self (t : towers) : can_get_to_one t t :=
 begin
-  use ['A', 'A'],
+  use [a, a],
   intros h,
   exact trivial,
 end
@@ -141,34 +154,21 @@ begin
 end
 
 -- TODO this is a mess
-lemma valid_move_sym (t : towers) (s d : char) : valid_move t s d → valid_move (move t s d) d s :=
+lemma valid_move_sym (t : towers) (s d : tower) : valid_move t s d → valid_move (move t s d) d s :=
 begin
   intros h,
-  by_cases h' : (s = 'A' ∨ s = 'B' ∨ s = 'C') ∧ (d = 'A' ∨ d = 'B' ∨ d = 'C'),
-  { sorry },
-  { sorry }
-end
-
--- TODO this is a mess
-lemma move_sym (t : towers) (s d : char) : make_move t s d → t = move (move t s d) d s :=
-begin
-  intros m,
-  by_cases (s = 'A' ∨ s = 'B' ∨ s = 'C') ∧ (d = 'A' ∨ d = 'B' ∨ d = 'C'),
-  { cases h with hs hd,
-    cases hs with hsA,
-    cases hd with hdA,
-    { -- move from A to A
-      rw [hsA, hdA],
-      refl,
-    },
-    { cases hd with hdB hdC,
-      { -- move from A to B
-        rw [hsA, hdB],
+  by_cases h' : (s = a ∨ s = b ∨ s = c) ∧ (d = a ∨ d = b ∨ d = c),
+  { cases h' with hs hd,
+    cases hs with hsA hsBC,
+    { cases hd with hdA hdBC,
+      { -- a a
+        rw [hsA, hdA],
         sorry
       },
-      { sorry },
+      { sorry }
     },
-    sorry },
+    { sorry }
+  },
   { sorry }
 end
 
@@ -266,7 +266,7 @@ can_get_to' (towers.mk (list.range' 1 disks) [] []) (towers.mk [] [] (list.range
 example : game 1 :=
 begin
   left,
-  use ['A', 'C'],
+  use [a, c],
   intros h',
   exact trivial,
   --unfold valid_move,
@@ -276,7 +276,7 @@ end
 example : game' 1 :=
 begin
   apply can_get_to_one',
-  use ['A', 'C'],
+  use [a, c],
   intros h',
   exact trivial,
   --unfold valid_move,
