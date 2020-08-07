@@ -13,24 +13,28 @@ instance towers_has_repr : has_repr position := ⟨λ t, "A: " ++ t.A.repr ++ " 
 #check position
 #check position.A
 
+-- smoooooosh
+def flatten (t : position) : list ℕ := t.A ++ t.B ++ t.C
+
 -- number of disks on the position
-def disks (t : position) : ℕ := t.A.length + t.B.length + t.C.length
+def num_disks (t : position) : ℕ := t.A.length + t.B.length + t.C.length
 
 -- is it true any valid tower can get to another valid tower w/equal number of disks?
 -- Kevin says yes by induction
 
+def unique_disks (t : position) : Prop := list.nodup (flatten t)
+-- ∀ d ∈ (flatten t), (list.filter (λ d', d' = d) (flatten t)) = [d]
+
 -- valid position only have lists that are strictly increasing
 -- valid position have no duplicate disks
 def valid_tower (t : position) : Prop :=
-list.sorted nat.lt t.A ∧ list.sorted nat.lt t.B ∧ list.sorted nat.lt t.C
-∧ (∀ a' ∈ t.A, ∀ b' ∈ t.B, ∀ c' ∈ t.C, a' ≠ b' ∧ b' ≠ c' ∧ a' ≠ c')  
+list.sorted nat.lt t.A ∧ list.sorted nat.lt t.B ∧ list.sorted nat.lt t.C ∧ unique_disks t
 
 #check valid_tower
 
--- no duplicate disks using different definition
 def valid_tower' (t : position) : Prop :=
 list.sorted nat.lt t.A ∧ list.sorted nat.lt t.B ∧ list.sorted nat.lt t.C
-∧ list.merge nat.lt (list.merge nat.lt t.A t.B) t.C = list.range' 1 (disks t)
+∧ list.merge nat.lt (list.merge nat.lt t.A t.B) t.C = list.range' 1 (num_disks t)
 
 #check valid_tower' -- don't reduce this unless you want to make your computer wheeeeze
 
@@ -39,15 +43,22 @@ inductive tower : Type
 
 open tower
 
+def get_tower (t : position) : tower → list ℕ
+| a := t.A
+| b := t.B
+| c := t.C
+
+example (t : position) : get_tower t a = t.A := by refl
+
 def move (t : position) : tower → tower → position
+| a a := t
 | a b := position.mk (t.A.tail) (t.A.head :: t.B) t.C
 | a c := position.mk (t.A.tail) t.B (t.A.head :: t.C)
 | b a := position.mk (t.B.head :: t.A) (t.B.tail) t.C
-| c a := position.mk (t.C.head :: t.A) t.B (t.C.tail)
-| b c := position.mk t.A (t.B.tail) (t.B.head :: t.C)
-| c b := position.mk t.A (t.C.head :: t.B) (t.C.tail)
-| a a := t
 | b b := t
+| b c := position.mk t.A (t.B.tail) (t.B.head :: t.C)
+| c a := position.mk (t.C.head :: t.A) t.B (t.C.tail)
+| c b := position.mk t.A (t.C.head :: t.B) (t.C.tail)
 | c c := t
 
 @[simp]
@@ -56,14 +67,14 @@ lemma move_self (t : position) (s : tower) : move t s s = t := by cases s; refl 
 #check move
 
 def valid_move (t : position) : tower → tower → Prop
-| a b := t.A ≠ [] ∧ (t.B.head < t.A.head ∨ t.B = [])
-| a c := t.A ≠ [] ∧ (t.C.head < t.A.head ∨ t.C = [])
-| b a := t.B ≠ [] ∧ (t.B.head < t.A.head ∨ t.A = [])
-| c a := t.C ≠ [] ∧ (t.C.head < t.A.head ∨ t.A = [])
-| b c := t.B ≠ [] ∧ (t.B.head < t.C.head ∨ t.C = [])
-| c b := t.C ≠ [] ∧ (t.C.head < t.B.head ∨ t.B = [])
 | a a := true
+| a b := t.A ≠ [] ∧ ((t.B ≠ [] ∧ t.A.head < t.B.head) ∨ t.B = [])
+| a c := t.A ≠ [] ∧ ((t.C ≠ [] ∧ t.A.head < t.C.head) ∨ t.C = [])
+| b a := t.B ≠ [] ∧ ((t.A ≠ [] ∧ t.B.head < t.A.head) ∨ t.A = [])
 | b b := true
+| b c := t.B ≠ [] ∧ ((t.C ≠ [] ∧ t.B.head < t.C.head) ∨ t.C = [])
+| c a := t.C ≠ [] ∧ ((t.A ≠ [] ∧ t.C.head < t.A.head) ∨ t.A = [])
+| c b := t.C ≠ [] ∧ ((t.B ≠ [] ∧ t.C.head < t.B.head) ∨ t.B = [])
 | c c := true
 
 @[simp]
@@ -173,7 +184,7 @@ begin
 end
 
 -- cons smol is still sorted in lt order
-example (l : list ℕ) (hl : list.sorted nat.lt l) (hl' : l ≠ []) (a : ℕ) (h : a < l.head) :
+lemma cons_smol_sorted (l : list ℕ) (hl : list.sorted nat.lt l) (hl' : l ≠ []) (a : ℕ) (h : a < l.head) :
 list.sorted nat.lt (a :: l) :=
 begin
   rw list.sorted_cons,
@@ -189,7 +200,89 @@ begin
       exact lt_trans h hb' } },
   { exact hl }
 end
+
+example (a : ℕ) : list.sorted nat.lt (a :: []) :=
+begin
+  exact list.sorted_singleton a,
+end
+
+example (a : ℕ) : [a] = a :: [] :=
+begin
+  exact rfl,
+end
+
+example (l : list ℕ) (h : l ≠ []) : ∃ x, x ∈ l :=
+begin
+  use l.head,
+  exact list.mem_of_mem_head' (list.head_mem_head' h),
+end
+
+example (l : list ℕ) (h : ∀ x x' ∈ l, x ≠ x') : l = [] :=
+begin
+  contrapose! h,
+  use [l.head, l.head],
+  repeat { split, exact list.mem_of_mem_head' (list.head_mem_head' h) },
+  refl,
+end
+
+example (l l' t : list ℕ) (h : l ~ l') : l ++ t ~ t ++ l' :=
+begin
+  calc l ++ t ~ t ++ l : list.perm_append_comm
+       ... ~ t ++ l' : list.perm.append_left t h,
+end
+
 /- End of list playground... but we can still play with towers :) -/
+
+lemma flatten_perm (t : position) (t₁ t₂ t₃ : tower) (h : t₁ ≠ t₂ ∧ t₁ ≠ t₃ ∧ t₂ ≠ t₃) :
+flatten t ~ get_tower t t₁ ++ get_tower t t₂ ++ get_tower t t₃ :=
+begin
+  rcases h with ⟨h₁, h₂, h₃⟩,
+  cases t₁; cases t₂; cases t₃;
+  try { contradiction }; -- get rid of any cases w/duplicates
+  try { unfold flatten, unfold get_tower },
+  { -- a b c ~ a c b
+    rw [list.append_assoc, list.append_assoc],
+    apply list.perm.append_left,
+    exact list.perm_append_comm },
+  { -- a b c ~ b a c
+    apply list.perm.append_right,
+    exact list.perm_append_comm },
+  { -- a b c ~ b c a
+    rw list.append_assoc,
+    exact list.perm_append_comm },
+  { -- a b c ~ c a b
+    conv_rhs { rw list.append_assoc },
+    exact list.perm_append_comm },
+  { -- a b c ~ c b a
+    have h : t.A ++ t.B ~ t.B ++ t.A := list.perm_append_comm,
+    conv_rhs { rw list.append_assoc },
+    calc (t.A ++ t.B) ++ t.C ~ t.C ++ (t.A ++ t.B) : list.perm_append_comm
+         ... ~ t.C ++ (t.B ++ t.A) : list.perm.append_left t.C h }
+end
+
+lemma valid_move_perm (t : position) (s d : tower) (hv : valid_move t s d) : flatten t ~ flatten (move t s d) :=
+begin
+  cases s; cases d;
+  try { rw move_self },
+  case a b { apply list.perm.append_right,
+             conv_lhs { rw (list.cons_head_tail hv.1).symm },
+             rw list.cons_append,
+             exact list.perm_middle.symm },
+  case a c { --apply list.perm.append_left
+             unfold flatten, unfold move, dsimp only,
+             sorry
+           },
+  repeat { sorry }
+end
+
+lemma valid_move_unique_disks (t : position) (h : unique_disks t) (s d : tower) (hv : valid_move t s d) :
+unique_disks (move t s d) :=
+begin
+  unfold unique_disks,
+  cases s; cases d; unfold move;
+  sorry
+end
+
 
 lemma move_self_valid_is_valid (t : position) (s : tower) :
 valid_tower t ∧ valid_move t s s → valid_tower (move t s s) :=
@@ -211,50 +304,28 @@ end
 lemma move_valid_is_valid (t : position) (s d : tower) :
 valid_tower t ∧ valid_move t s d → valid_tower (move t s d) :=
 begin
-  intros ht,
-  cases ht with ht hm,
-  by_cases hm' : (s = a ∨ s = b ∨ s = c) ∧ (d = a ∨ d = b ∨ d = c),
-  { cases hm' with hs hd,
-    cases hs with hsA hsBC,
-    { cases hd with hdA hdBC,
-      { -- a a
-        rw [hsA, hdA],
-        exact move_self_valid_is_valid' t a ht,
-      },
-      { cases hdBC with hdB hdC,
-        { -- a b
-          rw [hsA, hdB],
-          split,
-          { -- show A is sorted
-            exact list.sorted.tail ht.1,
-          },
-          { sorry },
-        },
-        { sorry }
-      },
-    },
-    { sorry }
-  },
-  { sorry }
+  rintros ⟨ht, hm⟩,
+  cases s; cases d;
+  try { exact move_self_valid_is_valid' t _ ht }; -- move to self is valid
+  try { rcases ht with ⟨htA, htB, htC, htd⟩, rcases hm with ⟨hml, hmr, hmr'⟩; split };
+  try { split }; try { split };
+  try { exact list.sorted.tail htA }; -- moving from A guarantees A is still sorted
+  try { exact list.sorted.tail htB }; -- moving from B guarantees B is still sorted
+  try { exact list.sorted.tail htC }; -- moving from C guarantees C is still sorted
+  try { exact htA }; -- A is unaffected
+  try { exact htB }; -- B is unaffected
+  try { exact htC }; -- C is unaffected
+  try { unfold move; rw hm_right; exact list.sorted_singleton _ }, -- moving to nil guarantees sorted
+  { exact cons_smol_sorted t.B htB hmr t.A.head hmr' };
+  sorry
 end
 
 -- TODO this is a mess
 lemma valid_move_sym (t : position) (s d : tower) : valid_move t s d → valid_move (move t s d) d s :=
 begin
   intros h,
-  by_cases h' : (s = a ∨ s = b ∨ s = c) ∧ (d = a ∨ d = b ∨ d = c),
-  { cases h' with hs hd,
-    cases hs with hsA hsBC,
-    { cases hd with hdA hdBC,
-      { -- a a
-        rw [hsA, hdA],
-        sorry
-      },
-      { sorry }
-    },
-    { sorry }
-  },
-  { sorry }
+  cases s; cases d,
+  sorry
 end
 
 lemma can_get_to_one_sym (t t' : position) : can_get_to_one t t' → can_get_to_one t' t :=
