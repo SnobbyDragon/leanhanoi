@@ -1,5 +1,8 @@
 import data.list
 import tactic
+import listplayground
+
+open listplayground
 
 -- THIRD TIME'S THE CHARM??
 namespace hanoi
@@ -43,12 +46,12 @@ inductive tower : Type
 
 open tower
 
-def get_tower (t : position) : tower → list ℕ
+def tow (t : position) : tower → list ℕ
 | a := t.A
 | b := t.B
 | c := t.C
 
-example (t : position) : get_tower t a = t.A := by refl
+example (t : position) : tow t a = t.A := by refl
 
 def move (t : position) : tower → tower → position
 | a a := t
@@ -79,6 +82,23 @@ def valid_move (t : position) : tower → tower → Prop
 
 @[simp]
 lemma move_self_valid (t : position) (s : tower) : valid_move t s s = true := by cases s; refl
+
+@[simp]
+lemma valid_move_nil (t : position) (s d : tower) (hs : tow t s ≠ []) (hd : tow t d = []) :
+valid_move t s d = true :=
+begin
+  cases s; cases d;
+  try { refl };
+  sorry
+end
+
+@[simp]
+lemma valid_move_lt (t : position) (s d : tower) (hs : tow t s ≠ []) (hd : tow t d ≠ []) (h : tow t s < tow t d) : valid_move t s d = true :=
+begin
+  cases s; cases d;
+  try { refl };
+  sorry
+end
 
 #check valid_move
 
@@ -150,96 +170,14 @@ begin
   exact can_get_to_one_self t,
 end
 
-
-/- WIP Playing with lists! -/
-example (l : list ℕ) (hl : list.sorted nat.lt l) (hl' : l ≠ []) : list.sorted nat.lt l.tail :=
-begin
-  exact list.sorted.tail hl,
-end
-
-example (l : list ℕ) (h : l ≠ []) : l = l.head :: l.tail :=
-begin
-  exact (list.cons_head_tail h).symm,
-end
-
--- surprised this isn't in mathlib... maybe bc this is too simple or something similar is?
--- either in head or tail
-example (l : list ℕ) (a ∈ l) : a = l.head ∨ a ∈ l.tail :=
-begin
-  induction l,
-  { right,
-    exact H },
-  { cases H,
-    { left,
-      exact H },
-    { right,
-      exact H } }
-end
-
--- ahah this version is more succinct
-example (l : list ℕ) (h : l ≠ []) (a ∈ l) : a = l.head ∨ a ∈ l.tail :=
-begin
-  rw (list.cons_head_tail h).symm at H,
-  exact (list.mem_cons_iff a (list.head l) (list.tail l)).mp H,
-end
-
--- cons smol is still sorted in lt order
-lemma cons_smol_sorted (l : list ℕ) (hl : list.sorted nat.lt l) (hl' : l ≠ []) (a : ℕ) (h : a < l.head) :
-list.sorted nat.lt (a :: l) :=
-begin
-  rw list.sorted_cons,
-  split,
-  { intros b hb,
-    rw <- list.cons_head_tail hl' at hl,
-    have hb' := list.rel_of_sorted_cons hl,
-    rw (list.cons_head_tail hl').symm at hb,
-    rw list.mem_cons_iff b (list.head l) (list.tail l) at hb,
-    cases hb,
-    { rwa hb },
-    { specialize hb' b hb,
-      exact lt_trans h hb' } },
-  { exact hl }
-end
-
-example (a : ℕ) : list.sorted nat.lt (a :: []) :=
-begin
-  exact list.sorted_singleton a,
-end
-
-example (a : ℕ) : [a] = a :: [] :=
-begin
-  exact rfl,
-end
-
-example (l : list ℕ) (h : l ≠ []) : ∃ x, x ∈ l :=
-begin
-  use l.head,
-  exact list.mem_of_mem_head' (list.head_mem_head' h),
-end
-
-example (l : list ℕ) (h : ∀ x x' ∈ l, x ≠ x') : l = [] :=
-begin
-  contrapose! h,
-  use [l.head, l.head],
-  repeat { split, exact list.mem_of_mem_head' (list.head_mem_head' h) },
-  refl,
-end
-
-example (l l' t : list ℕ) (h : l ~ l') : l ++ t ~ t ++ l' :=
-begin
-  calc l ++ t ~ t ++ l : list.perm_append_comm
-       ... ~ t ++ l' : list.perm.append_left t h,
-end
-
-/- End of list playground... but we can still play with towers :) -/
-
+-- not sure how useful this will be
 lemma flatten_perm (t : position) (t₁ t₂ t₃ : tower) (h : t₁ ≠ t₂ ∧ t₁ ≠ t₃ ∧ t₂ ≠ t₃) :
-flatten t ~ get_tower t t₁ ++ get_tower t t₂ ++ get_tower t t₃ :=
+flatten t ~ tow t t₁ ++ tow t t₂ ++ tow t t₃ :=
 begin
   rcases h with ⟨h₁, h₂, h₃⟩,
   cases t₁; cases t₂; cases t₃;
   try { contradiction }; -- get rid of any cases w/duplicates
-  try { unfold flatten, unfold get_tower },
+  try { unfold flatten, unfold tow },
   { -- a b c ~ a c b
     rw [list.append_assoc, list.append_assoc],
     apply list.perm.append_left,
@@ -268,9 +206,13 @@ begin
              conv_lhs { rw (list.cons_head_tail hv.1).symm },
              rw list.cons_append,
              exact list.perm_middle.symm },
-  case a c { --apply list.perm.append_left
-             unfold flatten, unfold move, dsimp only,
-             sorry
+  case a c { have h := flatten_perm (move t a c) c a b (by tauto),
+             unfold flatten at ⊢ h, unfold move at ⊢ h, unfold tow at h, dsimp only at ⊢ h,
+             conv_lhs { rw <- list.cons_head_tail hv.1 },
+             suffices h' : t.A.head :: t.A.tail ++ t.B ++ t.C ~ t.A.head :: t.C ++ t.A.tail ++ t.B,
+             { exact list.perm.trans h' (list.perm.symm h) },
+             { sorry
+             }
            },
   repeat { sorry }
 end
@@ -282,7 +224,6 @@ begin
   cases s; cases d; unfold move;
   sorry
 end
-
 
 lemma move_self_valid_is_valid (t : position) (s : tower) :
 valid_tower t ∧ valid_move t s s → valid_tower (move t s s) :=
@@ -316,8 +257,9 @@ begin
   try { exact htB }; -- B is unaffected
   try { exact htC }; -- C is unaffected
   try { unfold move; rw hm_right; exact list.sorted_singleton _ }, -- moving to nil guarantees sorted
-  { exact cons_smol_sorted t.B htB hmr t.A.head hmr' };
-  sorry
+  -- insert perms lemma to prove nodups and thus unique disks
+  { exact cons_smol_sorted t.B htB hmr t.A.head hmr' },
+  repeat { sorry }
 end
 
 -- TODO this is a mess
@@ -460,6 +402,12 @@ begin
     exact dec_trivial },
   { refl }
 end
+
+example : game' 3 :=
+begin
+  sorry
+end
+
 
 -- any puzzle can be solved!!
 -- when we prove this, we win forever ;)
