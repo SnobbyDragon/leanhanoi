@@ -1,2 +1,2 @@
 # leanhanoi
-I have no idea how Lean works
+Tower of Hanoi in Lean!
