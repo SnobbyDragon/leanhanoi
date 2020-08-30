@@ -35,11 +35,13 @@ do { sorry
 -- moves curr tower to a new position if valid, otherwise fails
 meta def fmove (s d : tower) : tactic unit :=
 do { `(can_get_to' %%t₁ %%t₂) ← tactic.target,
-     tactic.trace $ "goal is can_get_to",
-     tactic.trace $ (to_string t₁) ++ "\n" ++ (to_string t₂),
-     tactic.infer_type t₁ >>= tactic.trace,
-     tactic.apply `(fmove' %%s %%d)
-   }
+     --tactic.trace $ "goal is can_get_to",
+     --tactic.trace $ (to_string t₁) ++ "\n" ++ (to_string t₂),
+     --tactic.infer_type t₁ >>= tactic.trace,
+     tactic.apply `(@fmove' %%t₁ %%t₂ %%(reflect s) %%(reflect d)),
+     tactic.applyc ``and.intro,
+     
+     tactic.skip }
    <|> tactic.trace "goal is not can_get_to"
   
 -- moves goal tower backward to a new position if valid, otherwise fails
@@ -55,6 +57,12 @@ meta def startgame : tactic unit :=
 do { `(game' %%d) ← tactic.target,
      tactic.trace $ "game with " ++ (to_string d) ++ " disk(s)" }
    <|> tactic.trace "not a game"
+
+-- if two towers are the same then we win
+meta def endgame : tactic unit :=
+do { 
+   }
+
 
 -- test on simple case
 example : game' 1 :=
