@@ -41,6 +41,7 @@ list.sorted nat.lt t.A ∧ list.sorted nat.lt t.B ∧ list.sorted nat.lt t.C
 
 #check valid_tower' -- don't reduce this unless you want to make your computer wheeeeze
 
+@[derive has_reflect]
 inductive tower : Type
 | a | b | c
 
@@ -80,47 +81,24 @@ def valid_move (t : position) : tower → tower → Prop
 | c b := t.C ≠ [] ∧ ((t.B ≠ [] ∧ t.C.head < t.B.head) ∨ t.B = [])
 | c c := true
 
-@[simp]
-lemma move_self_valid (t : position) (s : tower) : valid_move t s s = true := by cases s; refl
-
-@[simp]
-lemma valid_move_nil (t : position) (s d : tower) (hs : tow t s ≠ []) (hd : tow t d = []) :
-valid_move t s d = true :=
+lemma invalid_move (t : position) (s d : tower) : ¬valid_move t s d ↔ (tow t s = [] ∨ (tow t s ≠ [] ∧ tow t d ≠ [] ∧ tow t d < tow t s)) :=
 begin
-  cases s; cases d;
-  try { refl };
-  sorry
-end
-
-@[simp]
-lemma valid_move_lt (t : position) (s d : tower) (hs : tow t s ≠ []) (hd : tow t d ≠ []) (h : tow t s < tow t d) : valid_move t s d = true :=
-begin
-  cases s; cases d;
-  try { refl };
-  sorry
+  split,
+  { intros h,
+    cases s; cases d;
+    try { unfold valid_move at h; exfalso; rw not_true at h, exact h };
+    sorry
+  },
+  { sorry }
 end
 
 #check valid_move
-
--- TODO not sure how to use this. needs to be reworked later?
-def make_move (t : position) (s d : tower) : Prop := (∃ (t' : position), t' = move t s d) → (valid_move t s d)
-
-#check make_move
 
 -- also rw is huuuuge when we rw h. does not look nice!
 example (t : position) (h : t = position.mk [1,2,3] [] []) : move t a b = position.mk [2,3] [1] [] :=
 begin
   rw h,
   refl,
-end
-
-example (t : position) (h : t = position.mk [1,2,3] [] []) : make_move t a b :=
-begin
-  intros h,
-  cases h with t' ht',
-  unfold valid_move,
-  rw h,
-  simp,
 end
 
 /- non-inductive definition is a lot of work... -/
@@ -345,8 +323,7 @@ end
 
 -- alternative inductive definition (suggested by Kevin Buzzard! thanks again!)
 inductive can_get_to' : position → position → Prop
--- | can_get_to_self' : ∀ (t : position), can_get_to' t t
--- not needed bc can get to self in one move
+| can_get_to_self' : ∀ (t : position), can_get_to' t t
 | can_get_to_one' : ∀ (t t' : position), can_get_to_one t t' → can_get_to' t t'
 | can_get_to_trans' : ∀ (t₁ t₂ t₃ : position), can_get_to' t₁ t₂ → can_get_to' t₂ t₃ → can_get_to' t₁ t₃
 -- why does it complain about: can_get_to' t₁ t₂ ∧ can_get_to' t₂ t₃ → can_get_to' t₁ t₃??
@@ -403,11 +380,56 @@ begin
   { refl }
 end
 
-example : game' 3 :=
+-- making applys for tactics?
+lemma can_get_to_one_move (t : position) (s d : tower) : valid_move t s d → can_get_to' t (move t s d) :=
 begin
-  sorry
+  intros h,
+  apply can_get_to_one',
+  use [s, d],
+  split,
+  { exact h },
+  { refl }
 end
 
+lemma can_get_to_one_move_sym (t : position) (s d : tower) : valid_move t d s → can_get_to' (move t d s) t :=
+begin
+  intros h,
+  apply can_get_to_one',
+  use [s, d],
+  split,
+  { exact valid_move_sym t d s h },
+  { sorry }
+end
+
+lemma fmove' {t₁ t₃ : position} (s d : tower) : valid_move t₁ s d ∧ can_get_to' (move t₁ s d) t₃ → can_get_to' t₁ t₃ :=
+begin
+  rintros ⟨h₁, h₂⟩,
+  apply can_get_to_trans'' t₁ (move t₁ s d) t₃,
+  split,
+  { apply can_get_to_one_move t₁ s d, 
+    exact h₁ },
+  { exact h₂ }
+end
+
+example : game' 1 :=
+begin
+  apply fmove' tower.a tower.c,
+  split,
+  unfold valid_move,
+  simp,
+  unfold move,
+  simp,
+  exact can_get_to_self' _,
+end
+
+lemma bmove' {t₁ t₃ : position} (s d : tower) : valid_move t₃ d s ∧ can_get_to' t₁ (move t₃ d s) → can_get_to' t₁ t₃ :=
+begin
+  rintros ⟨h₁, h₂⟩,
+  apply can_get_to_trans'' t₁ (move t₃ d s) t₃,
+  split,
+  { exact h₂ },
+  { sorry }
+end
 
 -- any puzzle can be solved!!
 -- when we prove this, we win forever ;)
