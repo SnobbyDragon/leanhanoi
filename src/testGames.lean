@@ -1,5 +1,5 @@
 import hanoi
-import plays
+import hanoitactics
 
 open hanoi hanoi.tower
 open hanoitactics
