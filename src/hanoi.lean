@@ -7,6 +7,7 @@ open listplayground
 -- THIRD TIME'S THE CHARM??
 namespace hanoi
 
+@[derive has_reflect]
 structure position := (A : list ℕ) (B : list ℕ) (C : list ℕ)
 
 instance towers_has_repr : has_repr position := ⟨λ t, "A: " ++ t.A.repr ++ " B: " ++ t.B.repr ++ " C: " ++ t.C.repr⟩
