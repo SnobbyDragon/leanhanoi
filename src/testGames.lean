@@ -1,5 +1,5 @@
 import hanoi
-import hanoitactics hanoiwidget
+import hanoiinteractive
 
 open hanoi hanoi.tower
 open hanoitactics
@@ -12,14 +12,14 @@ namespace testGames
 -/
 
 example : game' 1 :=
-begin
+begin [hanoi_tactic]
   md a b,
   md b c,
   finish_game,
 end
 
 example : game' 3 :=
-begin
+begin [hanoi_tactic]
   md a c,
   md a b,
   md c b,

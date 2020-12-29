@@ -11,7 +11,7 @@ namespace hanoi
 structure position := (A : list ℕ) (B : list ℕ) (C : list ℕ)
 
 instance towers_has_repr : has_repr position := ⟨λ t, "A: " ++ t.A.repr ++ " B: " ++ t.B.repr ++ " C: " ++ t.C.repr⟩
- 
+
 #eval position.mk [1, 2] [] []
 
 #check position
@@ -42,11 +42,17 @@ list.sorted nat.lt t.A ∧ list.sorted nat.lt t.B ∧ list.sorted nat.lt t.C
 
 #check valid_tower' -- don't reduce this unless you want to make your computer wheeeeze
 
-@[derive has_reflect]
+@[derive has_reflect, derive decidable_eq]
 inductive tower : Type
 | a | b | c
 
+
 open tower
+
+def tower_to_string : tower → string
+| a := "a" | b := "b" | c := "c"
+
+instance : has_to_string tower := ⟨tower_to_string⟩
 
 def tow (t : position) : tower → list ℕ
 | a := t.A
@@ -246,7 +252,7 @@ lemma valid_move_sym (t : position) (s d : tower) : valid_move t s d → valid_m
 begin
   intros h,
   cases s; cases d,
-  sorry
+  all_goals {sorry}
 end
 
 lemma can_get_to_one_sym (t t' : position) : can_get_to_one t t' → can_get_to_one t' t :=
@@ -407,7 +413,7 @@ begin
   rintros ⟨h₁, h₂⟩,
   apply can_get_to_trans'' t₁ (move t₁ s d) t₃,
   split,
-  { apply can_get_to_one_move t₁ s d, 
+  { apply can_get_to_one_move t₁ s d,
     exact h₁ },
   { exact h₂ }
 end
