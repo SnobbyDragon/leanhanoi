@@ -14,6 +14,13 @@ do { `(can_get_to' %%t₁ %%t₂) ← tactic.target,
     `[dsimp [move]]
 } <|> tactic.fail "failed to move disk :("
 
+-- sometimes needs to finish to verify valid_move
+meta def move_disk' (s d : tower) : tactic unit :=
+do { move_disk s d,
+     `[finish],
+     `[dsimp [move]]
+} <|> move_disk s d
+
 meta def start_game : tactic unit :=
 do { `(game' %%d) ← tactic.target,
     dunfold_target [``game']
@@ -26,10 +33,10 @@ do { `(can_get_to' %%t₁ %%t₂) ← tactic.target,
 } <|> tactic.fail "we haven't won yet"
 
 -- automatically starts the game if not started
-meta def move_disk' (s d : tower) : tactic unit :=
+meta def md (s d : tower) : tactic unit :=
 do { start_game,
-     move_disk s d
-} <|> move_disk s d
+     move_disk' s d
+} <|> move_disk' s d
 
 meta def get_start_position : tactic position :=
 do { `(game' %%d) ← tactic.target,
@@ -38,7 +45,7 @@ do { `(game' %%d) ← tactic.target,
 }
 
 meta def get_position : tactic position :=
-do { `(can_get_to' { A := %%A, B := %%B, C := %%C} %%t₂) ← tactic.target,
+do { `(can_get_to' {A := %%A, B := %%B, C := %%C} %%t₂) ← tactic.target,
       [A', B', C'] ← list.mmap (eval_expr (list ℕ)) [A, B, C],
       return ⟨A', B', C'⟩
 } <|> get_start_position

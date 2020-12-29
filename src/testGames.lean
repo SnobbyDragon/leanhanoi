@@ -8,15 +8,17 @@ namespace testGames
 
 example : game' 1 :=
 begin
-  start_game,
-  move_disk' a b,
-  move_disk' b c,
+  -- start_game,
+  md a b,
+  md b c,
   finish_game,
 end
 
 example : game' 3 :=
 begin
-  move_disk' a c,
+  md a c,
+  md a b,
+  md c a,
 end
 
 end testGames
