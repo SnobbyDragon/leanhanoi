@@ -14,18 +14,33 @@ do { `(can_get_to' %%t₁ %%t₂) ← tactic.target,
     `[dsimp [move]]
 } <|> tactic.fail "failed to move disk :("
 
-meta def startgame : tactic unit :=
+meta def start_game : tactic unit :=
 do { `(game' %%d) ← tactic.target,
     dunfold_target [``game']
 } <|> tactic.fail "not a game"
 
 -- if two towers are the same then we win
-meta def endgame : tactic unit :=
+meta def finish_game : tactic unit :=
 do { `(can_get_to' %%t₁ %%t₂) ← tactic.target,
      tactic.exact `(@can_get_to'.can_get_to_self' %%t₁)
 } <|> tactic.fail "we haven't won yet"
 
--- not sure how to get the current position...
-meta def get_position : position := position.mk [1,2,3] [] []
+-- automatically starts the game if not started
+meta def move_disk' (s d : tower) : tactic unit :=
+do { start_game,
+     move_disk s d
+} <|> move_disk s d
+
+meta def get_start_position : tactic position :=
+do { `(game' %%d) ← tactic.target,
+    d' ← (eval_expr ℕ) d,
+    return ⟨list.range' 1 d', [], []⟩
+}
+
+meta def get_position : tactic position :=
+do { `(can_get_to' { A := %%A, B := %%B, C := %%C} %%t₂) ← tactic.target,
+      [A', B', C'] ← list.mmap (eval_expr (list ℕ)) [A, B, C],
+      return ⟨A', B', C'⟩
+} <|> get_start_position
 
 end hanoitactics
