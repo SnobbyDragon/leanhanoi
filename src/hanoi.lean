@@ -46,7 +46,6 @@ list.sorted nat.lt t.A ∧ list.sorted nat.lt t.B ∧ list.sorted nat.lt t.C
 inductive tower : Type
 | a | b | c
 
-
 open tower
 
 def tower_to_string : tower → string

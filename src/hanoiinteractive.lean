@@ -16,8 +16,8 @@ namespace hanoi_tactic
   meta def save_info (p : pos) : hanoi_tactic unit := hanoi_save_info p
 
   meta instance : interactive.executor hanoi_tactic :=
-  { config_type := unit
-  , execute_with := λ n tac, tac
+  { config_type := unit, 
+    execute_with := λ n tac, tac
   }
 
   /- Now that these magic methods are implemented, you can write

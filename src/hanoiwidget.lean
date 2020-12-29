@@ -34,18 +34,20 @@ instance : has_to_string color :=
     end
   ⟩
 
-meta def pole_html (disks currDisks: ℕ) (c : color) : html α :=
+meta def pole_html (disks currDisks : ℕ) (c : color) : html α :=
 h "div" [
   style [
+    ("z-index", "-1"),
     ("background-color", to_string c),
     ("width", "5px"),
-    ("height", to_string ((disks - currDisks)*10 + 10) ++ "px")
+    ("height",  to_string (disks*10 + 10) ++ "px"),
+    ("margin-bottom", "-" ++ to_string (currDisks*10) ++ "px")
   ]
 ] []
 
 #html pole_html 3 0 wolf
 
-meta def disk_html (size : ℕ) (c : color) (selected : bool) : html α :=
+meta def disk_html (size disks currDisks : ℕ) (c : color) (selected : bool) : html α :=
 h "div" [
   key (to_string c),
   style ([
@@ -53,7 +55,7 @@ h "div" [
     ("background-color", to_string c),
     ("width", to_string (size*20) ++ "px"),
     ("height", "10px")
-  ] ++ (if selected then [("transform", "translate(0px,-20px)")] else []))
+  ] ++ (if selected then [("transform", "translate(0px,-" ++ to_string ((disks - currDisks)*10 + 30) ++ "px)")] else []))
 ] []
 
 def disk_color1 : ℕ → color
@@ -74,8 +76,8 @@ def disk_color2 : ℕ → color
 | 6 := beetle
 | _ := wolf
 
-meta def disks_html (currDisks : list ℕ) (selected : bool) : list (html α) :=
-currDisks.map_with_index (λ i currDisk, disk_html currDisk (disk_color1 currDisk) (selected ∧ i=0))
+meta def disks_html (disks : ℕ) (currDisks : list ℕ) (selected : bool) : list (html α) :=
+currDisks.map_with_index (λ i currDisk, disk_html currDisk disks currDisks.length (disk_color1 currDisk) (selected ∧ i=0))
 
 -- #html disk_html 1 cardinal
 -- #html disk_html 2 bee
@@ -92,10 +94,10 @@ h "div" [
     ("align-items", "center"),
     ("justify-items", "center"),
     ("width", to_string (disks*20 + 20) ++ "px"),
-    ("height", to_string (disks*10 + 30) ++ "px")
+    ("height", to_string (disks*10 + 20) ++ "px") -- room between towers and buttons
   ],
   on_click (λ x, ())
-] ([pole_html disks currDisks.length wolf] ++ (disks_html currDisks selected))
+] ([pole_html disks currDisks.length wolf] ++ (disks_html disks currDisks selected))
 
 -- #html tower_html 3 [1,2,3]
 
@@ -103,7 +105,9 @@ meta def towers_html (t : position) (selected : option tower) : html tower :=
 h "div" [
   style [
     ("display", "flex"),
-    ("flex-direction", "row")
+    ("flex-direction", "row"),
+    ("align-items", "flex-end"),
+    ("height", to_string ((num_disks t)*10 + 60) ++ "px") -- make room at top for disk animation
   ]
 ] [
   html.map_action (λ _, tower.a) $ tower_html (num_disks t) t.A (some tower.a = selected),

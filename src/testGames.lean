@@ -30,4 +30,9 @@ begin [hanoi_tactic]
   finish_game,
 end
 
+example : game' 3 :=
+begin [hanoi_tactic]
+  sorry
+end
+
 end testGames
