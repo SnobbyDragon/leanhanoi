@@ -1,5 +1,5 @@
 import hanoi
-import hanoitactics
+import hanoitactics hanoiwidget
 
 open hanoi hanoi.tower
 open hanoitactics

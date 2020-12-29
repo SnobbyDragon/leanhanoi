@@ -141,3 +141,19 @@ h "div" [
 #html uptriangle_html 3 beetle white
 
 meta def state_transitions_html (t : position) : html empty := sorry
+
+/- Hopefully will be able to see the widget when we play -/
+meta def tactic_towers_html (t : position) : tactic (html empty) := do return (towers_html t)
+
+meta def hanoi_widget : tactic (list (html empty)) :=
+do {
+    let position := get_position,
+    return [towers_html position]
+} <|> tactic.fail "widget failed :("
+
+meta def hanoi_component : tc unit empty := tc.stateless (λ u, hanoi_widget)
+
+meta def hanoi_save_info (p : pos) : tactic unit :=
+do tactic.save_widget p (widget.tc.to_component hanoi_component)
+
+attribute [vm_override hanoi_save_info] tactic.save_info
